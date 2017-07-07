@@ -1,0 +1,3 @@
+LIBRARY myCythonFunc.pyd
+EXPORTS
+initmyCythonFunc

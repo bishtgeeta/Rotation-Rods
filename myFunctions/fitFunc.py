@@ -1,6 +1,7 @@
 import numpy
 import cv2
 from scipy import optimize
+from numpy import isnan
 
 numpy.seterr(over='raise')
 
@@ -38,6 +39,7 @@ def fitting(rawData,slope):
     R,C = numpy.indices(rawData.shape)
     data = numpy.column_stack((numpy.ndarray.flatten(R), numpy.ndarray.flatten(C), numpy.ndarray.flatten(rawData)))
     flag = True
+    error = 1e10
     k = 1
     
     [a0,a1,a2,height,muR,muC,sigmaR,sigmaC,rho] = initialGuess(data)
@@ -65,6 +67,9 @@ def fitting(rawData,slope):
         if (sigmaR<0.5 or sigmaC<0.5):
             flag=False
         else:
+            fitData = a0 + a1*R + a2*C + height*numpy.e**(-1.0/(2*(1-rho**2)) * (((R-muR)/sigmaR)**2 + ((C-muC)/sigmaC)**2 - 2*rho*(R-muR)*(C-muC)/(sigmaR*sigmaC)))
+            error = numpy.sqrt(numpy.sum((fitData-rawData)**2))
+            
             covMatrix = numpy.array([[sigmaR**2, rho*sigmaR*sigmaC],[rho*sigmaR*sigmaC, sigmaC**2]])
             eigVals, eigVecs = numpy.linalg.eig(covMatrix)
 
@@ -75,10 +80,13 @@ def fitting(rawData,slope):
                 theta += 2*numpy.pi
             theta -= numpy.pi/2
             
-            cv2.ellipse(mask,center=(int(numpy.round(muC)),int(numpy.round(muR))),\
-                        axes=(int(numpy.round(majorAxis)),int(numpy.round(minorAxis))),\
-                        angle=numpy.rad2deg(theta),startAngle=0,endAngle=360,\
-                        color=1,thickness=-1)
-    return mask.astype('bool'), flag
+            if (isnan(muC) or isnan(muR) or isnan(majorAxis) or isnan(minorAxis) or isnan(theta)):
+                pass
+            else:
+                cv2.ellipse(mask,center=(int(numpy.round(muC)),int(numpy.round(muR))),\
+                            axes=(int(numpy.round(majorAxis)),int(numpy.round(minorAxis))),\
+                            angle=numpy.rad2deg(theta),startAngle=0,endAngle=360,\
+                            color=1,thickness=-1)
+    return mask.astype('bool'), flag, error
     #muR, muC, majorAxis, minorAxis, theta
 ################################################################################

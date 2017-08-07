@@ -27,16 +27,14 @@ import fitFunc
 # USER INPUTS
 #######################################################################
 inputFile = ''
-outputFile = r'Z:\Geeta-Share\Rotation\20170612125247\20170612125247.h5'
+outputFile = r'F:\Data\Rotation\20170612125247-NRLD\20170612125247.h5'
 inputDir = r'Y:\seewee\Shufen\14-09-22.893_Export\20170612125247'
 outputDir = r'F:\Data\Rotation\20170612125247-NRLD\output'
-
 pixInNM = 0.5772
 fps = 300
 microscope = 'JOEL2200' #'JOEL2010','T12','JOEL2200'
 camera = 'DE16' #'Orius','One-view','DE16'
 owner = 'See Wee'
-
 zfillVal = 6
 fontScale = 2
 structure = [[1,1,1],[1,1,1],[1,1,1]]
@@ -115,8 +113,7 @@ if (rank==0):
 #for frame in tqdm(procFrameList[rank]):
     #gImgProc = fp['/dataProcessing/gImgRawStack/'+str(frame).zfill(zfillVal)].value
     #if (blurFlag==True):
-        #gImgProc = median(gImgProc,disk(5))
-        #gImgProc = median(gImgProc,disk(4))
+        #gImgProc = median(gImgProc,disk(9))
     #if (invertFlag==True):
         #gImgProc = imageProcess.invertImage(gImgProc)
     #if (bgSubFlag==True):
@@ -147,7 +144,7 @@ if (rank==0):
 #[row,col,numFrames,frameList] = misc.getVitals(fp)
 #procFrameList = numpy.array_split(frameList,size)
 #cropSize = 80
-
+#areaRange = numpy.array([500,6000], dtype='float64')
 #outFile = open(outputDir+'/segmentation_'+str(rank)+'.dat','wb')
 
 #for frame in tqdm(procFrameList[rank]):
@@ -156,10 +153,9 @@ if (rank==0):
     #gImgProc = fp['/dataProcessing/processedStack/'+str(frame).zfill(zfillVal)].value
     #bImgBdry = gImgRaw.copy(); bImgBdry[:] = 0
     
-    #for threshold in numpy.arange(0.20,0.05,-0.01):
+    #for threshold in numpy.arange(0.20,0.10,-0.01):
         #blobs_log = blob_log(gImgProc, min_sigma=20, max_sigma=20, num_sigma=1, threshold=threshold)
         #flag=False
-        ##print frame,threshold,blobs_log
         #if (blobs_log.size>0):
             #blobs_log[:,2] = blobs_log[:,2]*numpy.sqrt(2)
             #counter = 0; particleDetails = []
@@ -208,12 +204,14 @@ if (rank==0):
                         
             #if (flag==True):
                 #bImg = imageProcess.fillHoles(bImgBdry)
+                #bImg = myCythonFunc.areaThreshold(bImg.astype('uint8'), areaRange=areaRange)
                 #bImgBdry = imageProcess.normalize(imageProcess.boundary(bImg))
                 #label, numLabel, dictionary = imageProcess.regionProps(bImg, gImgRaw, structure=[[1,1,1],[1,1,1],[1,1,1]], centroid=True, area=True, effRadius=True)
-                #outFile.write("%d 1 %f %f %f %f\n" %(frame, dictionary['centroid'][0][0], dictionary['centroid'][0][1], dictionary['effRadius'][0], dictionary['area'][0]*pixInNM*pixInNM))
+                #if (numLabel>0):
+                    #outFile.write("%d %f %f %f %f\n" %(frame, dictionary['centroid'][0][0], dictionary['centroid'][0][1], dictionary['effRadius'][0], dictionary['area'][0]*pixInNM*pixInNM))
                 #break
                 
-    #finalImg = numpy.column_stack((numpy.maximum(gImgNorm,bImgBdry), gImgNorm))
+    #finalImg = numpy.column_stack((numpy.maximum(gImgNorm,bImgBdry), gImgProc))
     #cv2.imwrite(outputDir+'/segmentation/result/'+str(frame).zfill(zfillVal)+'.png', finalImg)
 #outFile.close()
 #fp.flush(), fp.close()
@@ -235,32 +233,32 @@ if (rank==0):
 #######################################################################
 # CREATE BINARY IMAGES INTO HDF5 FILE
 #######################################################################
-#if (rank==0):
-    #print "Creating binary images from segmented images"
+if (rank==0):
+    print "Creating binary images from segmented images"
     
-#if (rank==0):
-    #fp = h5py.File(outputFile, 'r+')
-#else:
-    #fp = h5py.File(outputFile, 'r')
-#[row,col,numFrames,frameList] = misc.getVitals(fp)
-#procFrameList = numpy.array_split(frameList,size)
+if (rank==0):
+    fp = h5py.File(outputFile, 'r+')
+else:
+    fp = h5py.File(outputFile, 'r')
+[row,col,numFrames,frameList] = misc.getVitals(fp)
+procFrameList = numpy.array_split(frameList,size)
 
-#for frame in tqdm(procFrameList[rank]):
-    #bImg = cv2.imread(outputDir+'/segmentation/result/'+str(frame).zfill(zfillVal)+'.png',0)[0:row,0:col]
-    #bImg = bImg==255
-    #bImg = imageProcess.fillHoles(bImg)
-    #numpy.save(outputDir+'/segmentation/result/'+str(frame).zfill(zfillVal)+'.npy', bImg)
-#comm.barrier()
+for frame in tqdm(procFrameList[rank]):
+    bImg = cv2.imread(outputDir+'/segmentation/result/'+str(frame).zfill(zfillVal)+'.png',0)[0:row,0:col]
+    bImg = bImg==255
+    bImg = imageProcess.fillHoles(bImg)
+    numpy.save(outputDir+'/segmentation/result/'+str(frame).zfill(zfillVal)+'.npy', bImg)
+comm.barrier()
 
-#if (rank==0):
-    #print "Saving the binary stack to h5 dataset"
-    #for frame in tqdm(frameList):
-        #bImg = numpy.load(outputDir+'/segmentation/result/'+str(frame).zfill(zfillVal)+'.npy')
-        #fileIO.writeH5Dataset(fp,'/segmentation/bImgStack/'+str(frame).zfill(zfillVal),bImg)
-        #fileIO.delete(outputDir+'/segmentation/result/'+str(frame).zfill(zfillVal)+'.npy')
+if (rank==0):
+    print "Saving the binary stack to h5 dataset"
+    for frame in tqdm(frameList):
+        bImg = numpy.load(outputDir+'/segmentation/result/'+str(frame).zfill(zfillVal)+'.npy')
+        fileIO.writeH5Dataset(fp,'/segmentation/bImgStack/'+str(frame).zfill(zfillVal),bImg)
+        fileIO.delete(outputDir+'/segmentation/result/'+str(frame).zfill(zfillVal)+'.npy')
         
-#fp.flush(), fp.close()
-#comm.Barrier()
+fp.flush(), fp.close()
+comm.Barrier()
 #######################################################################
 
 

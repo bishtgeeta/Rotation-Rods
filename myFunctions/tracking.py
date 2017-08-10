@@ -517,7 +517,7 @@ def generateLabelImages(fp,imgDir,fontScale=1,size=1,rank=0,structure=[[1,1,1],[
         for j in range(len(dictionary['id'])):
             bImgLabelN = label==dictionary['id'][j]
             ID = numpy.max(bImgLabelN*labelImg)
-            bImg = imageProcess.textOnGrayImage(bImg, str(int(ID)), (int(dictionary['centroid'][j][0])+3,int(dictionary['centroid'][j][1])-3), fontScale=fontScale, color=127, thickness=1)
+            bImg = imageProcess.textOnGrayImage(bImg, str(int(ID)), (int(dictionary['centroid'][j][0])+3,int(dictionary['centroid'][j][1])-3), fontScale=fontScale, color=127, thickness=3)
         finalImage = numpy.column_stack((bImg, numpy.maximum(bImgBdry,gImg)))
         cv2.imwrite(imgDir+'/'+str(frame).zfill(zfillVal)+'.png', finalImage)
     return 0

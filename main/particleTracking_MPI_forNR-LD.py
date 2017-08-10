@@ -137,95 +137,104 @@ if (rank==0):
 #######################################################################
 # IMAGE SEGMENTATION
 #######################################################################
-#if (rank==0):
-    #print "Performing segmentation for all the frames"
+if (rank==0):
+    print "Performing segmentation for all the frames"
     
-#fp = h5py.File(outputFile, 'r')
-#[row,col,numFrames,frameList] = misc.getVitals(fp)
-#procFrameList = numpy.array_split(frameList,size)
-#cropSize = 80
-#areaRange = numpy.array([500,6000], dtype='float64')
-#outFile = open(outputDir+'/segmentation_'+str(rank)+'.dat','wb')
+fp = h5py.File(outputFile, 'r')
+[row,col,numFrames,frameList] = misc.getVitals(fp)
+frameList = [201,732,866]+numpy.random.randint(1,10000,50).tolist()
+procFrameList = numpy.array_split(frameList,size)
+cropSize = 100
+areaRange = numpy.array([500,6000], dtype='float64')
+outFile = open(outputDir+'/segmentation_'+str(rank)+'.dat','wb')
 
-#for frame in tqdm(procFrameList[rank]):
-    #gImgRaw = fp['/dataProcessing/gImgRawStack/'+str(frame).zfill(zfillVal)].value
-    #gImgNorm = imageProcess.normalize(gImgRaw,min=0,max=230)
-    #gImgProc = fp['/dataProcessing/processedStack/'+str(frame).zfill(zfillVal)].value
-    #bImgBdry = gImgRaw.copy(); bImgBdry[:] = 0
+for frame in procFrameList[rank]:#tqdm(procFrameList[rank]):
+    gImgRaw = fp['/dataProcessing/gImgRawStack/'+str(frame).zfill(zfillVal)].value
+    gImgNorm = imageProcess.normalize(gImgRaw,min=0,max=230)
+    gImgProc = fp['/dataProcessing/processedStack/'+str(frame).zfill(zfillVal)].value
+    bImgBdry = gImgRaw.copy(); bImgBdry[:] = 0
     
-    #for threshold in numpy.arange(0.20,0.10,-0.01):
-        #blobs_log = blob_log(gImgProc, min_sigma=20, max_sigma=20, num_sigma=1, threshold=threshold)
-        #flag=False
-        #if (blobs_log.size>0):
-            #blobs_log[:,2] = blobs_log[:,2]*numpy.sqrt(2)
-            #counter = 0; particleDetails = []
-            #for r,c,rad in blobs_log:
-                #rr,cc = circle_perimeter(int(r),int(c),int(rad))
-                #if ((rr<0).any()==True or (cc<0).any()==True):
-                    #pass
-                #elif ((rr>row-1).any()==True or (cc>col-1).any()==True):
-                    #pass
-                #elif (r-cropSize<0 or r+cropSize>=row):
-                    #pass
-                #elif (c-cropSize<0 or c+cropSize>=col):
-                    #pass
-                #else:
-                    #counter+=1
-                    #particleDetails.append([counter,r,c,rad])
+    for threshold in numpy.arange(0.20,0.10,-0.01):
+        blobs_log = blob_log(gImgProc, min_sigma=20, max_sigma=20, num_sigma=1, threshold=threshold)
+        flag=False
+        if (blobs_log.size>0):
+            blobs_log[:,2] = blobs_log[:,2]*numpy.sqrt(2)
+            counter = 0; particleDetails = []
+            for r,c,rad in blobs_log:
+                rr,cc = circle_perimeter(int(r),int(c),int(rad))
+                if ((rr<0).any()==True or (cc<0).any()==True):
+                    pass
+                elif ((rr>row-1).any()==True or (cc>col-1).any()==True):
+                    pass
+                elif (r-cropSize<0 or r+cropSize>=row):
+                    pass
+                elif (c-cropSize<0 or c+cropSize>=col):
+                    pass
+                else:
+                    counter+=1
+                    particleDetails.append([counter,r,c,rad])
                     
-            #if (len(particleDetails)>0 and len(particleDetails)<3):
-                #for counter,r,c,rad in particleDetails:
-                    #rCenter,cCenter,theta = r,c,1
-                    #gImgCrop = imageProcess.normalize(gImgProc[int(rCenter)-cropSize:int(rCenter)+cropSize+1,int(cCenter)-cropSize:int(cCenter)+cropSize+1])
+            if (len(particleDetails)>0 and len(particleDetails)<3):
+                for counter,r,c,rad in particleDetails:
+                    rCenter,cCenter,theta = r,c,1
+                    gImgCrop = imageProcess.normalize(gImgProc[int(rCenter)-cropSize:int(rCenter)+cropSize+1,int(cCenter)-cropSize:int(cCenter)+cropSize+1])
                     
-                    #bImgCrop1,flag1,err1 = fitFunc.fitting(gImgCrop,theta)
-                    #bImgCrop2,flag2,err2 = fitFunc.fitting(gImgCrop,-theta)
+                    bImgCrop1,flag1,err1 = fitFunc.fitting(gImgCrop,theta)
+                    bImgCrop2,flag2,err2 = fitFunc.fitting(gImgCrop,-theta)
                     
-                    #if (flag1==True and flag2==True):
-                        ##err1 = numpy.sum(numpy.abs(gImgCrop-imageProcess.normalize(bImgCrop1)))
-                        ##err2 = numpy.sum(numpy.abs(gImgCrop-imageProcess.normalize(bImgCrop2)))
-                        #if (err1<err2):
-                            #bImgCrop,flag = bImgCrop1,flag1
-                        #else:
-                            #bImgCrop,flag = bImgCrop2,flag2
-                    #elif (flag1==True and flag2==False):
-                        #bImgCrop,flag = bImgCrop1,flag1
-                    #elif (flag1==False and flag2==True):
-                        #bImgCrop,flag = bImgCrop2,flag2
-                    #elif (flag1==False and flag2==False):
-                        #bImgCrop = bImgCrop1; bImgCrop[:]=False
+                    if (flag1==True and flag2==True):
+                        #err1 = numpy.sum(numpy.abs(gImgCrop-imageProcess.normalize(bImgCrop1)))
+                        #err2 = numpy.sum(numpy.abs(gImgCrop-imageProcess.normalize(bImgCrop2)))
+                        if (err1<err2):
+                            bImgCrop,flag = bImgCrop1,flag1
+                        else:
+                            bImgCrop,flag = bImgCrop2,flag2
+                    elif (flag1==True and flag2==False):
+                        bImgCrop,flag = bImgCrop1,flag1
+                    elif (flag1==False and flag2==True):
+                        bImgCrop,flag = bImgCrop2,flag2
+                    elif (flag1==False and flag2==False):
+                        bImgCrop = bImgCrop1; bImgCrop[:]=False
                         
-                    #if (bImgCrop.max()==False):
-                        #flag=False
+                    if (bImgCrop.max()==False):
+                        flag=False
                         
-                    #if (flag == True):
-                        #bImgCropBdry = imageProcess.normalize(imageProcess.boundary(bImgCrop))
-                        #bImgBdry[int(rCenter)-cropSize:int(rCenter)+cropSize+1,int(cCenter)-cropSize:int(cCenter)+cropSize+1] = numpy.maximum(bImgBdry[int(rCenter)-cropSize:int(rCenter)+cropSize+1,int(cCenter)-cropSize:int(cCenter)+cropSize+1],bImgCropBdry)
+                    if (flag == True):
+                        bImgCropBdry = imageProcess.normalize(imageProcess.boundary(bImgCrop))
+                        bImgBdry[int(rCenter)-cropSize:int(rCenter)+cropSize+1,int(cCenter)-cropSize:int(cCenter)+cropSize+1] = numpy.maximum(bImgBdry[int(rCenter)-cropSize:int(rCenter)+cropSize+1,int(cCenter)-cropSize:int(cCenter)+cropSize+1],bImgCropBdry)
                         
-            #if (flag==True):
-                #bImg = imageProcess.fillHoles(bImgBdry)
-                #bImg = myCythonFunc.areaThreshold(bImg.astype('uint8'), areaRange=areaRange)
+            if (flag==True):
+                bImg = imageProcess.fillHoles(bImgBdry)
+                bImg = myCythonFunc.areaThreshold(bImg.astype('uint8'), areaRange=areaRange)
                 #bImgBdry = imageProcess.normalize(imageProcess.boundary(bImg))
-                #label, numLabel, dictionary = imageProcess.regionProps(bImg, gImgRaw, structure=[[1,1,1],[1,1,1],[1,1,1]], centroid=True, area=True, effRadius=True)
-                #if (numLabel>0):
-                    #outFile.write("%d %f %f %f %f\n" %(frame, dictionary['centroid'][0][0], dictionary['centroid'][0][1], dictionary['effRadius'][0], dictionary['area'][0]*pixInNM*pixInNM))
-                #break
+                label, numLabel, dictionary = imageProcess.regionProps(bImg, gImgRaw, structure=[[1,1,1],[1,1,1],[1,1,1]], centroid=True, area=True, effRadius=True, circularity=True, chullArea=True)
+                if (numLabel>0):
+                    for l in range(numLabel):
+                        measure = 1.*dictionary['area'][l]/dictionary['chullArea'][l]
+                        print frame, measure
+                        if (measure >= 0.97):
+                            outFile.write("%d %d %f %f %f %f\n" %(frame, dictionary['id'][l], dictionary['centroid'][l][0], dictionary['centroid'][l][1], dictionary['effRadius'][l], dictionary['area'][l]*pixInNM*pixInNM))
+                        else:
+                            label[label==l+1]=0
+                bImg = label.astype('bool')
+                bImgBdry = imageProcess.normalize(imageProcess.boundary(bImg))
+                break
                 
-    #finalImg = numpy.column_stack((numpy.maximum(gImgNorm,bImgBdry), gImgProc))
-    #cv2.imwrite(outputDir+'/segmentation/result/'+str(frame).zfill(zfillVal)+'.png', finalImg)
-#outFile.close()
-#fp.flush(), fp.close()
-#comm.Barrier()
+    finalImg = numpy.column_stack((numpy.maximum(gImgNorm,bImgBdry), gImgProc))
+    cv2.imwrite(outputDir+'/segmentation/result/'+str(frame).zfill(zfillVal)+'.png', finalImg)
+outFile.close()
+fp.flush(), fp.close()
+comm.Barrier()
 
-#if (rank==0):
-    #for r in range(size):
-        #if (r==0):
-            #measures = numpy.loadtxt(outputDir+'/segmentation_'+str(r)+'.dat')
-        #else:
-            #measures = numpy.row_stack((measures,numpy.loadtxt(outputDir+'/segmentation_'+str(r)+'.dat')))
-        #fileIO.delete(outputDir+'/segmentation_'+str(r)+'.dat')
-    #numpy.savetxt(outputDir+'/segmentation.dat', measures, fmt='%.6f')
-#comm.Barrier()
+if (rank==0):
+    for r in range(size):
+        if (r==0):
+            measures = numpy.loadtxt(outputDir+'/segmentation_'+str(r)+'.dat')
+        else:
+            measures = numpy.row_stack((measures,numpy.loadtxt(outputDir+'/segmentation_'+str(r)+'.dat')))
+        fileIO.delete(outputDir+'/segmentation_'+str(r)+'.dat')
+    numpy.savetxt(outputDir+'/segmentation.dat', measures, fmt='%.6f')
+comm.Barrier()
 
 #######################################################################
 
@@ -233,57 +242,57 @@ if (rank==0):
 #######################################################################
 # CREATE BINARY IMAGES INTO HDF5 FILE
 #######################################################################
-if (rank==0):
-    print "Creating binary images from segmented images"
+#if (rank==0):
+    #print "Creating binary images from segmented images"
     
-if (rank==0):
-    fp = h5py.File(outputFile, 'r+')
-else:
-    fp = h5py.File(outputFile, 'r')
-[row,col,numFrames,frameList] = misc.getVitals(fp)
-procFrameList = numpy.array_split(frameList,size)
+#if (rank==0):
+    #fp = h5py.File(outputFile, 'r+')
+#else:
+    #fp = h5py.File(outputFile, 'r')
+#[row,col,numFrames,frameList] = misc.getVitals(fp)
+#procFrameList = numpy.array_split(frameList,size)
 
-for frame in tqdm(procFrameList[rank]):
-    bImg = cv2.imread(outputDir+'/segmentation/result/'+str(frame).zfill(zfillVal)+'.png',0)[0:row,0:col]
-    bImg = bImg==255
-    bImg = imageProcess.fillHoles(bImg)
-    numpy.save(outputDir+'/segmentation/result/'+str(frame).zfill(zfillVal)+'.npy', bImg)
-comm.barrier()
+#for frame in tqdm(procFrameList[rank]):
+    #bImg = cv2.imread(outputDir+'/segmentation/result/'+str(frame).zfill(zfillVal)+'.png',0)[0:row,0:col]
+    #bImg = bImg==255
+    #bImg = imageProcess.fillHoles(bImg)
+    #numpy.save(outputDir+'/segmentation/result/'+str(frame).zfill(zfillVal)+'.npy', bImg)
+#comm.barrier()
 
-if (rank==0):
-    print "Saving the binary stack to h5 dataset"
-    for frame in tqdm(frameList):
-        bImg = numpy.load(outputDir+'/segmentation/result/'+str(frame).zfill(zfillVal)+'.npy')
-        fileIO.writeH5Dataset(fp,'/segmentation/bImgStack/'+str(frame).zfill(zfillVal),bImg)
-        fileIO.delete(outputDir+'/segmentation/result/'+str(frame).zfill(zfillVal)+'.npy')
+#if (rank==0):
+    #print "Saving the binary stack to h5 dataset"
+    #for frame in tqdm(frameList):
+        #bImg = numpy.load(outputDir+'/segmentation/result/'+str(frame).zfill(zfillVal)+'.npy')
+        #fileIO.writeH5Dataset(fp,'/segmentation/bImgStack/'+str(frame).zfill(zfillVal),bImg)
+        #fileIO.delete(outputDir+'/segmentation/result/'+str(frame).zfill(zfillVal)+'.npy')
         
-fp.flush(), fp.close()
-comm.Barrier()
+#fp.flush(), fp.close()
+#comm.Barrier()
 #######################################################################
 
 
 #######################################################################
 # LABELLING PARTICLES
 #######################################################################
-centerDispRange = [200,200]
-perAreaChangeRange = [500,600]
-missFramesTh = 100
+#centerDispRange = [150,150]
+#perAreaChangeRange = [500,600]
+#missFramesTh = 100
     
-if (rank==0):
-    print "Labelling segmented particles"
-    fp = h5py.File(outputFile, 'r+')
-    maxID, occurenceFrameList = tracking.labelParticlesFromText(fp, centerDispRange=centerDispRange, perAreaChangeRange=perAreaChangeRange, missFramesTh=missFramesTh,scale=scale)
-    fp.attrs['particleList'] = range(1,maxID+1)
-    numpy.savetxt(outputDir+'/frameOccurenceList.dat',numpy.column_stack((fp.attrs['particleList'],occurenceFrameList)),fmt='%d')
-    fp.flush(), fp.close()
-comm.Barrier()
+#if (rank==0):
+    #print "Labelling segmented particles"
+    #fp = h5py.File(outputFile, 'r+')
+    #maxID, occurenceFrameList = tracking.labelParticlesFromText(fp, centerDispRange=centerDispRange, perAreaChangeRange=perAreaChangeRange, missFramesTh=missFramesTh,scale=scale)
+    #fp.attrs['particleList'] = range(1,maxID+1)
+    #numpy.savetxt(outputDir+'/frameOccurenceList.dat',numpy.column_stack((fp.attrs['particleList'],occurenceFrameList)),fmt='%d')
+    #fp.flush(), fp.close()
+#comm.Barrier()
 
-if (rank==0):
-    print "Generating images with labelled particles"
-fp = h5py.File(outputFile, 'r')
-tracking.generateLabelImages(fp,outputDir+'/segmentation/tracking',fontScale,size,rank)
-fp.flush(), fp.close()
-comm.Barrier()
+#if (rank==0):
+    #print "Generating images with labelled particles"
+#fp = h5py.File(outputFile, 'r')
+#tracking.generateLabelImages(fp,outputDir+'/segmentation/tracking',fontScale,size,rank)
+#fp.flush(), fp.close()
+#comm.Barrier()
 #######################################################################
 
 

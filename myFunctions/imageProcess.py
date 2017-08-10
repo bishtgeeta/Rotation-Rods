@@ -354,7 +354,7 @@ def labelRegionProps(labelImg, structure=[[1,1,1],[1,1,1],[1,1,1]], area=False, 
 #######################################################################
 # FIND OUT THE REGION PROPERTIES OF CONNECTED OBJECTS IN A BINARY IMAGE
 #######################################################################
-def regionProps(bImg, gImg=0, structure=[[1,1,1],[1,1,1],[1,1,1]], area=False, perimeter=False, circularity=False, orientation=False, pixelList=False, bdryPixelList = False, centroid=False, intensityList=False, sumIntensity=False, avgIntensity=False, maxIntensity=False, effRadius=False, radius=False, theta=False, rTick=False, qTick=False, circumRadius=False, inRadius=False, radiusOFgyration=False, rTickMMM=False, thetaMMM=False):
+def regionProps(bImg, gImg=0, structure=[[1,1,1],[1,1,1],[1,1,1]], area=False, perimeter=False, circularity=False, orientation=False, pixelList=False, bdryPixelList = False, centroid=False, intensityList=False, sumIntensity=False, avgIntensity=False, maxIntensity=False, effRadius=False, radius=False, theta=False, rTick=False, qTick=False, circumRadius=False, inRadius=False, radiusOFgyration=False, rTickMMM=False, thetaMMM=False, chullArea=False):
     [labelImg, numLabel] = ndimage.label(bImg, structure=structure)
     [row, col] = bImg.shape
     dictionary = {}
@@ -405,6 +405,8 @@ def regionProps(bImg, gImg=0, structure=[[1,1,1],[1,1,1],[1,1,1]], area=False, p
         dictionary['thetaMean'] = []
         dictionary['dThetaP'] = []
         dictionary['dThetaM'] = []
+    if (chullArea == True):
+        dictionary['chullArea'] = []
         
     for i in range(1, numLabel+1):
         bImgLabelN = labelImg == i
@@ -415,6 +417,9 @@ def regionProps(bImg, gImg=0, structure=[[1,1,1],[1,1,1],[1,1,1]], area=False, p
         if (perimeter == True):
             pmeter = measure.perimeter(bImgLabelN)
             dictionary['perimeter'].append(pmeter)
+        if (chullArea == True):
+            cHullArea = measure.regionprops(bImgLabelN.astype('uint8'))[0]['convex_area']
+            dictionary['chullArea'].append(cHullArea)
         if (circularity == True):
             Area = bImgLabelN.sum()
             pmeter = measure.perimeter(bImgLabelN)

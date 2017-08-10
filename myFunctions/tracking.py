@@ -509,7 +509,7 @@ def generateLabelImages(fp,imgDir,fontScale=1,size=1,rank=0,structure=[[1,1,1],[
     procFrameList = numpy.array_split(frameList,size)
     for frame in tqdm(procFrameList[rank]):
         labelImg = fp['/segmentation/labelStack/'+str(frame).zfill(zfillVal)].value
-        gImg = fp['/dataProcessing/gImgRawStack/'+str(frame).zfill(zfillVal)].value
+        gImg = fp['/dataProcessing/processedStack/'+str(frame).zfill(zfillVal)].value
         bImg = labelImg.astype('bool')
         bImgBdry = imageProcess.normalize(imageProcess.boundary(bImg))
         label, numLabel, dictionary = imageProcess.regionProps(bImg, gImg, structure=structure, centroid=True)
